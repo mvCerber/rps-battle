@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rock Paper Scissors Battle</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        button, input {
+            margin: 10px;
+            padding: 10px;
+            font-size: 1rem;
+        }
+        input {
+            width: 250px;
+        }
+        #log {
+            margin-top: 20px;
+            background-color: #222;
+            padding: 10px;
+            min-height: 50px;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rock Paper Scissors Battle</h1>
+    <div>
+        <p>Game Status: <span id="gameStatus">Loading...</span></p>
+        <p>Player 1: <span id="player1">-</span></p>
+        <p>Player 2: <span id="player2">-</span></p>
+        <p>Winner: <span id="winner">-</span></p>
+        <button onclick="connectWallet()">Connect Wallet</button><br>
+        <button onclick="joinAsPlayer(1)">Join as Player 1</button>
+        <button onclick="joinAsPlayer(2)">Join as Player 2</button><br>
+        <input type="text" id="move" placeholder="rock/paper/scissors"><br>
+        <input type="text" id="secret" placeholder="Secret phrase"><br>
+        <button onclick="commitMove()">Commit Move</button>
+        <button onclick="revealMove()">Reveal Move</button><br>
+        <button onclick="resetGame()">Reset Game</button>
+        <div id="log">Log:</div>
+    </div>
+    <script>
+        const abi = /* ABI буде вставлено вручну */;
+        const contractAddress = "0x82CC8cDF9f152cA4dF361d2741a5B698445bAe80";
+        let provider, signer, contract;
+
+        async function connectWallet() {
+            try {
+                await ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                contract = new ethers.Contract(contractAddress, abi, signer);
+                log("Wallet connected: " + await signer.getAddress());
+                updateUI();
+            } catch (err) {
+                log("Connection error: " + err.message);
+            }
+        }
+
+        async function joinAsPlayer(num) {
+            try {
+                const state = await contract.gameState();
+                const stake = await contract.stakeAmount();
+                const method = num === 1 ? "joinAsPlayer1" : "joinAsPlayer2";
+                if ((num === 1 && state !== 0) || (num === 2 && state !== 1)) {
+                    log("Invalid game state for joining as player " + num);
+                    return;
+                }
+                const tx = await contract[method]({ value: stake });
+                await tx.wait();
+                log(`Joined as Player ${num}`);
+                updateUI();
+            } catch (err) {
+                log("Join failed: " + err.message);
+            }
+        }
+
+        async function commitMove() {
+            try {
+                const move = document.getElementById("move").value;
+                const secret = document.getElementById("secret").value;
+                const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string", "string"], [move, secret]));
+                const tx = await contract.commitMove(hash);
+                await tx.wait();
+                log("Move committed");
+                updateUI();
+            } catch (err) {
+                log("Commit failed: " + err.message);
+            }
+        }
+
+        async function revealMove() {
+            try {
+                const move = document.getElementById("move").value;
+                const secret = document.getElementById("secret").value;
+                const tx = await contract.revealMove(move, secret);
+                await tx.wait();
+                log("Move revealed");
+                updateUI();
+            } catch (err) {
+                log("Reveal failed: " + err.message);
+            }
+        }
+
+        async function resetGame() {
+            try {
+                const state = await contract.gameState();
+                if (state !== 4) {
+                    log("Game not finished");
+                    return;
+                }
+                const tx = await contract.resetGame();
+                await tx.wait();
+                log("Game reset");
+                updateUI();
+            } catch (err) {
+                log("Reset failed: " + err.message);
+            }
+        }
+
+        async function updateUI() {
+            try {
+                document.getElementById("gameStatus").textContent = ["WaitingForPlayer1", "WaitingForPlayer2", "CommitPhase", "RevealPhase", "Finished"][await contract.gameState()];
+                document.getElementById("player1").textContent = await contract.player1();
+                document.getElementById("player2").textContent = await contract.player2();
+            } catch (err) {
+                log("Update UI failed: " + err.message);
+            }
+        }
+
+        function log(message) {
+            document.getElementById("log").textContent = "Log: " + message;
+        }
+
+        window.onload = () => {
+            if (window.ethereum) {
+                connectWallet();
+            } else {
+                log("MetaMask not found");
+            }
+        };
+    </script>
+</body>
+</html>
