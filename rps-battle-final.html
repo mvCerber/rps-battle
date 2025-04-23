@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rock Paper Scissors Battle</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button, input {
+      padding: 10px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+    }
+    button {
+      background: #16a34a;
+      color: #fff;
+      cursor: pointer;
+    }
+    input {
+      background: #222;
+      color: #fff;
+    }
+    #log {
+      margin-top: 20px;
+      background: #222;
+      padding: 10px;
+      font-size: 0.9em;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rock Paper Scissors Battle</h1>
+  <div class="container">
+    <div id="status">Game Status: <span id="gameStatus">Loading...</span></div>
+    <div>Player 1: <span id="player1">-</span></div>
+    <div>Player 2: <span id="player2">-</span></div>
+    <div>Winner: <span id="winner">-</span></div>
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <button onclick="joinAsPlayer1()">Join as Player 1</button>
+    <button onclick="joinAsPlayer2()">Join as Player 2</button>
+    <input id="move" placeholder="rock / paper / scissors" />
+    <input id="secret" placeholder="Secret phrase" />
+    <button onclick="commitMove()">Commit Move</button>
+    <button onclick="revealMove()">Reveal Move</button>
+    <button onclick="resetGame()">Reset Game</button>
+    <div id="log">Log:</div>
+  </div>
+  <script>
+    const contractAddress = "0x82CC8cDF9f152cA4dF361d2741a5B698445bAe80";
+    const abi = [{"inputs": [{"internalType": "bytes32", "name": "moveHash", "type": "bytes32"}], "name": "commitMove", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "joinAsPlayer1", "outputs": [], "stateMutability": "payable", "type": "function"}, {"inputs": [], "name": "joinAsPlayer2", "outputs": [], "stateMutability": "payable", "type": "function"}, {"inputs": [], "name": "resetGame", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "string", "name": "moveStr", "type": "string"}, {"internalType": "string", "name": "secret", "type": "string"}], "name": "revealMove", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "_devWallet", "type": "address"}], "stateMutability": "nonpayable", "type": "constructor"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "committedMove", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "devWallet", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "gameState", "outputs": [{"internalType": "enum RockPaperScissorsBattleSafe.GameState", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "player1", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "player2", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "revealedMove", "outputs": [{"internalType": "enum RockPaperScissorsBattleSafe.Move", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "stakeAmount", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}];
+
+    let provider, signer, contract, currentAccount;
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        currentAccount = await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        log("Connected: " + currentAccount);
+        updateUI();
+      } else {
+        alert("MetaMask not found!");
+      }
+    }
+
+    async function joinAsPlayer1() {
+      try {
+        const tx = await contract.joinAsPlayer1({ value: ethers.utils.parseEther("0.02") });
+        await tx.wait();
+        log("Joined as Player 1");
+        updateUI();
+      } catch (err) {
+        log("Join P1 failed: " + err.message);
+      }
+    }
+
+    async function joinAsPlayer2() {
+      try {
+        const tx = await contract.joinAsPlayer2({ value: ethers.utils.parseEther("0.02") });
+        await tx.wait();
+        log("Joined as Player 2");
+        updateUI();
+      } catch (err) {
+        log("Join P2 failed: " + err.message);
+      }
+    }
+
+    async function commitMove() {
+      const move = document.getElementById("move").value.trim().toLowerCase();
+      const secret = document.getElementById("secret").value.trim();
+      if (!move || !secret) return alert("Enter move and secret!");
+      const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(move + secret));
+      try {
+        const tx = await contract.commitMove(hash);
+        await tx.wait();
+        log("Move committed.");
+        updateUI();
+      } catch (err) {
+        log("Commit failed: " + err.message);
+      }
+    }
+
+    async function revealMove() {
+      const move = document.getElementById("move").value.trim().toLowerCase();
+      const secret = document.getElementById("secret").value.trim();
+      try {
+        const tx = await contract.revealMove(move, secret);
+        await tx.wait();
+        log("Move revealed.");
+        updateUI();
+      } catch (err) {
+        log("Reveal failed: " + err.message);
+      }
+    }
+
+    async function resetGame() {
+      try {
+        const tx = await contract.resetGame();
+        await tx.wait();
+        log("Game reset.");
+        updateUI();
+      } catch (err) {
+        log("Reset failed: " + err.message);
+      }
+    }
+
+    async function updateUI() {
+      if (!contract) return;
+      const [gs, p1, p2] = await Promise.all([
+        contract.gameState(),
+        contract.player1(),
+        contract.player2()
+      ]);
+      document.getElementById("gameStatus").textContent = Object.keys(gs)[gs];
+      document.getElementById("player1").textContent = p1;
+      document.getElementById("player2").textContent = p2;
+    }
+
+    function log(message) {
+      document.getElementById("log").textContent += "\n" + message;
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+</body>
+</html>
