@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rock Paper Scissors Battle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script defer src="script.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+        }
+        .status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rock Paper Scissors Battle</h1>
+        <div class="status" id="gameStatus">Game Status: Loading...</div>
+        <div id="playerInfo">Player 1: -<br>Player 2: -<br>Winner: -</div>
+        <button onclick="connectWallet()">Connect Wallet</button>
+        <button onclick="joinAsPlayer(1)">Join as Player 1</button>
+        <button onclick="joinAsPlayer(2)">Join as Player 2</button>
+        <input id="moveInput" placeholder="rock/paper/scissors">
+        <input id="secretInput" placeholder="Secret phrase">
+        <button onclick="commitMove()">Commit Move</button>
+        <button onclick="revealMove()">Reveal Move</button>
+        <button onclick="resetGame()">Reset Game</button>
+        <div class="status" id="log">Log: Waiting...</div>
+    </div>
+</body>
+</html>
